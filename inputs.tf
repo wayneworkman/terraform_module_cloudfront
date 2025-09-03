@@ -107,3 +107,21 @@ variable "managed_rule_groups" {
   ]
   description = "AWS Managed Rule groups to enable"
 }
+
+variable "enable_rate_limiting" {
+  type        = bool
+  default     = false
+  description = "Enable rate limiting per IP address"
+}
+
+variable "rate_limit_requests" {
+  type        = number
+  default     = 2000
+  description = "Number of requests allowed per IP address within the evaluation window"
+}
+
+variable "rate_limit_evaluation_window_sec" {
+  type        = number
+  default     = 300
+  description = "Evaluation window in seconds for rate limiting (300 = 5 minutes, 60 = 1 minute)"
+}

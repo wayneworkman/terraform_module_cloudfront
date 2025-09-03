@@ -48,6 +48,32 @@ resource "aws_wafv2_web_acl" "main" {
   }
 
   dynamic "rule" {
+    for_each = var.enable_rate_limiting ? [1] : []
+    content {
+      name     = "RateLimitPerIP"
+      priority = 0
+
+      action {
+        block {}
+      }
+
+      statement {
+        rate_based_statement {
+          limit                 = var.rate_limit_requests
+          aggregate_key_type    = "IP"
+          evaluation_window_sec = var.rate_limit_evaluation_window_sec
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "${local.waf_name_prefix}_rate_limit"
+        sampled_requests_enabled   = true
+      }
+    }
+  }
+
+  dynamic "rule" {
     for_each = var.waf_mode == "geo_blocking" || var.waf_mode == "both" ? (length(var.geo_exclude_countries) > 0 ? [1] : []) : []
     content {
       name     = "BlockExcludedCountries"
@@ -132,40 +158,57 @@ resource "aws_wafv2_web_acl" "main" {
       statement {
         not_statement {
           statement {
-            or_statement {
-              dynamic "statement" {
-                for_each = length(var.allowed_ip_ranges) > 0 ? [1] : []
-                content {
-                  ip_set_reference_statement {
-                    arn = aws_wafv2_ip_set.ipv4_allowlist[0].arn
+            # Use OR statement only when we have multiple IP sets, otherwise use single statement
+            dynamic "or_statement" {
+              for_each = (length(var.allowed_ip_ranges) > 0 && length(var.allowed_ipv6_ranges) > 0) ? [1] : []
+              content {
+                dynamic "statement" {
+                  for_each = length(var.allowed_ip_ranges) > 0 ? [1] : []
+                  content {
+                    ip_set_reference_statement {
+                      arn = aws_wafv2_ip_set.ipv4_allowlist[0].arn
+                    }
+                  }
+                }
+                dynamic "statement" {
+                  for_each = length(var.allowed_ipv6_ranges) > 0 ? [1] : []
+                  content {
+                    ip_set_reference_statement {
+                      arn = aws_wafv2_ip_set.ipv6_allowlist[0].arn
+                    }
                   }
                 }
               }
-              dynamic "statement" {
-                for_each = length(var.allowed_ipv6_ranges) > 0 ? [1] : []
-                content {
-                  ip_set_reference_statement {
-                    arn = aws_wafv2_ip_set.ipv6_allowlist[0].arn
-                  }
-                }
+            }
+            # Use single IPv4 statement when only IPv4 is configured
+            dynamic "ip_set_reference_statement" {
+              for_each = (length(var.allowed_ip_ranges) > 0 && length(var.allowed_ipv6_ranges) == 0) ? [1] : []
+              content {
+                arn = aws_wafv2_ip_set.ipv4_allowlist[0].arn
               }
-              dynamic "statement" {
-                for_each = length(var.allowed_ip_ranges) == 0 && length(var.allowed_ipv6_ranges) == 0 ? [1] : []
-                content {
-                  byte_match_statement {
-                    search_string = "block-all-when-no-ips-configured"
-                    field_to_match {
-                      single_header {
-                        name = "x-never-exists-header"
-                      }
-                    }
-                    text_transformation {
-                      priority = 0
-                      type     = "NONE"
-                    }
-                    positional_constraint = "CONTAINS"
+            }
+            # Use single IPv6 statement when only IPv6 is configured
+            dynamic "ip_set_reference_statement" {
+              for_each = (length(var.allowed_ip_ranges) == 0 && length(var.allowed_ipv6_ranges) > 0) ? [1] : []
+              content {
+                arn = aws_wafv2_ip_set.ipv6_allowlist[0].arn
+              }
+            }
+            # Use dummy statement when no IPs are configured
+            dynamic "byte_match_statement" {
+              for_each = (length(var.allowed_ip_ranges) == 0 && length(var.allowed_ipv6_ranges) == 0) ? [1] : []
+              content {
+                search_string = "block-all-when-no-ips-configured"
+                field_to_match {
+                  single_header {
+                    name = "x-never-exists-header"
                   }
                 }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+                positional_constraint = "CONTAINS"
               }
             }
           }
