@@ -175,6 +175,7 @@ module "subdomain-domain-root" {
 | `domain_name` | string | - | The root domain name (required) |
 | `subdomain_name` | string | `""` | The subdomain to prepend to the domain name |
 | `subject_alternative_names` | list(string) | `[]` | Additional domain names for the certificate |
+| `additional_alias_names` | list(string) | `[]` | Extra FQDNs (within `zone_id`) to point at the distribution via A/AAAA alias records, e.g. `["www.example.com"]`. Each should also be in `subject_alternative_names` so the certificate covers it. |
 | `zone_id` | string | - | Route53 hosted zone ID (required) |
 | `project` | string | - | Project name for tagging (required) |
 | `index_document` | string | `"index.html"` | Default index document |
@@ -318,7 +319,7 @@ WAFv2 pricing includes:
 ## Outputs
 
 The module provides the following outputs:
-- CloudFront distribution ID and domain name
+- CloudFront distribution ID, domain name, and hosted zone ID
 - S3 bucket name and ARN
 - ACM certificate ARN
 - WAF Web ACL ARN (if enabled)

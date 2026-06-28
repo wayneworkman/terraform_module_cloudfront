@@ -13,6 +13,12 @@ variable "subject_alternative_names" {
   default = []
 }
 
+variable "additional_alias_names" {
+  type        = list(string)
+  default     = []
+  description = "Extra FQDNs (within var.zone_id) to point at this distribution via A and AAAA alias records, e.g. ['www.example.com']. Each name should also appear in subject_alternative_names so the ACM certificate covers it."
+}
+
 variable "zone_id" {
   type = string
 }

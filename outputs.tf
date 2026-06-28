@@ -13,6 +13,11 @@ output "cloudfront_distribution_domain_name" {
   value       = aws_cloudfront_distribution.s3_distribution.domain_name
 }
 
+output "cloudfront_distribution_hosted_zone_id" {
+  description = "The CloudFront distribution's Route53 hosted zone ID (use for alias records)"
+  value       = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
+}
+
 output "s3_bucket_id" {
   description = "The ID of the S3 bucket"
   value       = aws_s3_bucket.bucket.id

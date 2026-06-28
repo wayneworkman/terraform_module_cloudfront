@@ -102,6 +102,32 @@ resource "aws_route53_record" "site_record" {
 }
 
 
+# Optional extra alias records (e.g. www) pointing at this distribution.
+resource "aws_route53_record" "additional_alias_a" {
+  for_each = toset(var.additional_alias_names)
+  zone_id  = var.zone_id
+  name     = each.value
+  type     = "A"
+  alias {
+    name                   = aws_cloudfront_distribution.s3_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "additional_alias_aaaa" {
+  for_each = toset(var.additional_alias_names)
+  zone_id  = var.zone_id
+  name     = each.value
+  type     = "AAAA"
+  alias {
+    name                   = aws_cloudfront_distribution.s3_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+
 locals {
   s3_origin_id = "myS3Origin"
   full_domain  = var.subdomain_name != "" ? format("%s.%s", var.subdomain_name, var.domain_name) : var.domain_name
